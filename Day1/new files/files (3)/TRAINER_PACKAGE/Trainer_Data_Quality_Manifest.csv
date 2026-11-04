@@ -1,0 +1,39 @@
+﻿issue_id,quality_dimension,column,issue_type,description,detection_rule,rows_in_raw_csv,rows_after_exact_dedup,expected_treatment,exercise_id,status_after_day01
+DQ-MISS-customer_id,Completeness,customer_id,Missing value,Empty cell in customer_id,customer_id == '' (empty),0,0,Fill with 'Unknown' placeholder,A6/B5,Resolved (placeholder)
+DQ-MISS-age,Completeness,age,Missing value,Empty cell in age,age == '' (empty),22,22,Median imputation (after invalid values set to missing),A6/B8,Resolved (imputed)
+DQ-MISS-annual_income_inr,Completeness,annual_income_inr,Missing value,Empty cell in annual_income_inr,annual_income_inr == '' (empty),31,30,Median imputation (after invalid values set to missing),A6/B8,Resolved (imputed)
+DQ-MISS-city,Completeness,city,Missing value,Empty cell in city,city == '' (empty),16,15,Fill with 'Unknown' placeholder,A6/B5,Resolved (placeholder)
+DQ-MISS-account_type,Completeness,account_type,Missing value,Empty cell in account_type,account_type == '' (empty),10,10,Fill with 'Unknown' placeholder,A6/B5,Resolved (placeholder)
+DQ-MISS-preferred_channel,Completeness,preferred_channel,Missing value,Empty cell in preferred_channel,preferred_channel == '' (empty),18,18,Fill with 'Unknown' placeholder,A6/B5,Resolved (placeholder)
+DQ-MISS-signup_date,Completeness,signup_date,Missing value,Empty cell in signup_date,signup_date == '' (empty),12,12,Leave as NaT and flag (cannot be imputed meaningfully),A6/B9,Unresolved exception (flagged)
+DQ-MISS-transactions_last_30d,Completeness,transactions_last_30d,Missing value,Empty cell in transactions_last_30d,transactions_last_30d == '' (empty),21,20,Median imputation (after invalid values set to missing),A6/B8,Resolved (imputed)
+DQ-MISS-avg_transaction_amount_inr,Completeness,avg_transaction_amount_inr,Missing value,Empty cell in avg_transaction_amount_inr,avg_transaction_amount_inr == '' (empty),25,25,Median imputation (after invalid values set to missing),A6/B8,Resolved (imputed)
+DQ-DUP-EXACT,Uniqueness,(all columns),Exact duplicate row,Row identical to an earlier row in every column,df.duplicated() (keep='first'),12,0,Drop (keep first occurrence),A7/B6,Resolved (removed)
+DQ-DUP-ID,Uniqueness,customer_id,Repeated ID with conflicting data,Same customer_id on 2 rows that disagree on income / transactions / amount (sometimes account type),customer_id repeats after exact duplicates are removed,16,16,Flag both rows; do NOT delete (needs source-system check),A7/B7,Unresolved exception (flagged)
+DQ-ID-WS,Consistency,customer_id,Leading/trailing spaces,Padded customer_id,v != v.strip(),4,4,str.strip(),B2,Resolved
+DQ-ID-LOWER,Consistency,customer_id,Lower-case ID,ID written as cust####,v.strip() != v.strip().upper(),3,3,str.upper(),B2,Resolved
+DQ-WS-city,Consistency,city,Leading/trailing spaces,Padded text value,v != v.strip(),22,22,str.strip(),B2,Resolved
+DQ-CASE-city,Consistency,city,Inconsistent capitalisation,ALL CAPS or all lower-case value,v.strip().isupper() or islower(),28,28,str.title(),B2,Resolved
+DQ-WS-account_type,Consistency,account_type,Leading/trailing spaces,Padded text value,v != v.strip(),16,16,str.strip(),B2,Resolved
+DQ-CASE-account_type,Consistency,account_type,Inconsistent capitalisation,ALL CAPS or all lower-case value,v.strip().isupper() or islower(),25,24,str.title(),B2,Resolved
+DQ-WS-preferred_channel,Consistency,preferred_channel,Leading/trailing spaces,Padded text value,v != v.strip(),12,12,str.strip(),B2,Resolved
+DQ-CASE-preferred_channel,Consistency,preferred_channel,Inconsistent capitalisation,ALL CAPS or all lower-case value,v.strip().isupper() or islower(),32,31,str.title(),B2,Resolved
+DQ-CITY-ALIAS,Consistency,city,Alternative city spelling,Bombay/Bangalore/New Delhi/Madras/Calcutta instead of the standard name,v.strip().title() in alias map,28,28,Map with documented alias dictionary,B2,Resolved
+DQ-INC-FMT,Validity,annual_income_inr,Number stored as text,"Currency symbol (₹), 'INR' prefix or thousands separators in income",not fully numeric digits,63,63,Strip non [0-9.-] characters then to_numeric,A4/B3,Resolved
+DQ-AGE-STR,Validity,age,Number stored as text,Age written like '34 yrs',age contains letters,6,6,Strip non [0-9.-] characters then to_numeric,A4/B3,Resolved
+DQ-AGE-INV,Validity,age,Impossible value,Age outside 18-100 (incl. 0 and negative),age < 18 or age > 100,9,9,"Flag, set to missing, then impute",A8/B4,Resolved (flagged + imputed)
+DQ-AGE-SUS,Accuracy,age,Suspicious value,Valid but unusual age 90-100,90 <= age <= 100,4,4,Flag only; keep value,B4,Unresolved exception (flagged)
+DQ-INC-INV,Validity,annual_income_inr,Impossible value,Income zero or negative,income <= 0,8,8,"Flag, set to missing, then impute",A8/B4,Resolved (flagged + imputed)
+DQ-INC-SUS,Accuracy,annual_income_inr,Suspiciously high value,"Income above ₹1 crore (1,00,00,000)","income > 10,000,000",5,5,Flag only; keep value (verify with source),B4,Unresolved exception (flagged)
+DQ-TXN-INV,Validity,transactions_last_30d,Impossible value,Negative transaction count,count < 0,6,6,"Flag, set to missing, then impute",A8/B4,Resolved (flagged + imputed)
+DQ-TXN-SUS,Accuracy,transactions_last_30d,Suspiciously high value,More than 100 transactions in 30 days,count > 100,5,5,Flag only; keep value,B4,Unresolved exception (flagged)
+DQ-AVG-INV,Validity,avg_transaction_amount_inr,Impossible value,Negative average transaction amount,amount < 0,6,6,"Flag, set to missing, then impute",A8/B4,Resolved (flagged + imputed)
+DQ-AVG-SUS,Accuracy,avg_transaction_amount_inr,Suspiciously high value,"Average transaction above ₹2,00,000","amount > 200,000",5,5,Flag only; keep value,B4,Unresolved exception (flagged)
+DQ-UNX-account_type,Validity,account_type,Unexpected category,"Value outside allowed list ['Current', 'Premium', 'Savings'] after trimming/title-casing",normalised value not in allowed list,10,9,Replace with 'Unknown' and set category_unexpected flag,A8/B5,Resolved (placeholder + flag)
+DQ-UNX-preferred_channel,Validity,preferred_channel,Unexpected category,"Value outside allowed list ['Branch', 'Mobile', 'Web'] after trimming/title-casing",normalised value not in allowed list,8,8,Replace with 'Unknown' and set category_unexpected flag,A8/B5,Resolved (placeholder + flag)
+DQ-DATE-ISO,Consistency,signup_date,Date format,ISO format YYYY-MM-DD (dominant),regex \d{4}-\d{2}-\d{2},327,320,Parse with explicit format,B9,Resolved
+DQ-DATE-SLASH,Consistency,signup_date,Date format,DD/MM/YYYY with slashes,regex \d{2}/\d{2}/\d{4},69,65,Parse with explicit format,B9,Resolved
+DQ-DATE-MON,Consistency,signup_date,Date format,DD-Mon-YYYY (e.g. 17-Apr-2023),regex \d{2}-[A-Za-z]{3}-\d{4},52,51,Parse with explicit format,B9,Resolved
+DQ-DATE-BAD,Validity,signup_date,Invalid calendar date,"Looks like a date but does not exist (30 Feb, 31 Apr, month 13, ...)",matches a date pattern but parse returns NaT,8,8,NaT + flag,B9,Unresolved exception (flagged)
+DQ-DATE-FUT,Validity,signup_date,Future date,Signup after the extract date 2026-10-01,date > 2026-10-01,4,4,NaT + flag,B9,Unresolved exception (flagged)
+DQ-DATE-OLD,Validity,signup_date,Implausibly old date,Signup before 2015-01-01 (before the bank's digital launch),date < 2015-01-01,3,3,NaT + flag,B9,Unresolved exception (flagged)

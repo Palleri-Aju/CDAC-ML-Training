@@ -1,0 +1,39 @@
+﻿issue_id,quality_dimension,column,issue_type,description,detection_rule,rows_in_raw_csv,rows_after_exact_dedup,expected_treatment,exercise_id,expected_final_status
+DQ-MISS-PassengerId,Completeness,PassengerId,Missing value,Empty cell in PassengerId,PassengerId == '',0,0,None,A3,-
+DQ-MISS-Survived,Completeness,Survived,Missing value,Empty cell in Survived,Survived == '',3,3,Row has no label: remove from modelling table (quarantine),A3/A8,Quarantined
+DQ-MISS-Pclass,Completeness,Pclass,Missing value,Empty cell in Pclass,Pclass == '',6,6,Keep NaN; most-frequent imputation INSIDE the training-only pipeline,A3/B5,Resolved in pipeline (fitted on training data)
+DQ-MISS-Name,Completeness,Name,Missing value,Empty cell in Name,Name == '',0,0,None,A3,-
+DQ-MISS-Sex,Completeness,Sex,Missing value,Empty cell in Sex,Sex == '',5,5,Keep NaN; most-frequent imputation INSIDE the training-only pipeline,A3/B5,Resolved in pipeline (fitted on training data)
+DQ-MISS-Age,Completeness,Age,Missing value,Empty cell in Age,Age == '',117,117,Keep NaN; median imputation INSIDE the training-only pipeline,A3/B4,Resolved in pipeline (fitted on training data)
+DQ-MISS-SibSp,Completeness,SibSp,Missing value,Empty cell in SibSp,SibSp == '',0,0,None,A3,-
+DQ-MISS-Parch,Completeness,Parch,Missing value,Empty cell in Parch,Parch == '',0,0,None,A3,-
+DQ-MISS-Ticket,Completeness,Ticket,Missing value,Empty cell in Ticket,Ticket == '',0,0,None,A3,-
+DQ-MISS-Fare,Completeness,Fare,Missing value,Empty cell in Fare,Fare == '',12,12,Keep NaN; median imputation INSIDE the training-only pipeline,A3/B4,Resolved in pipeline (fitted on training data)
+DQ-MISS-Cabin,Completeness,Cabin,Missing value,Empty cell in Cabin,Cabin == '',474,469,Do not use as a feature (mostly missing); drop column,A3/A9,Column excluded from modelling
+DQ-MISS-Embarked,Completeness,Embarked,Missing value,Empty cell in Embarked,Embarked == '',9,8,Keep NaN; most-frequent imputation INSIDE the training-only pipeline,A3/B5,Resolved in pipeline (fitted on training data)
+DQ-DUP-EXACT,Uniqueness,(all columns),Exact duplicate row,Row identical to an earlier row in every column,df.duplicated(),10,0,"Drop extra copies, keep first",A4/A8,Resolved (removed)
+DQ-DUP-ID,Uniqueness,PassengerId,Repeated ID with conflicting data,Same PassengerId on two rows that differ in Age/Fare (sometimes Pclass),PassengerId repeats after exact duplicates are removed,12,12,Flag; exclude all rows of these IDs from the modelling table (quarantine) so one passenger cannot land in both train and test,A4/A8,Unresolved exception (quarantined for review)
+DQ-SEX-CASE,Consistency,Sex,Capitalisation or spacing,"MALE, Female, ' male', 'female ' ...","value != value.strip().lower() and value.strip().lower() in (male, female)",25,25,strip + lower,A5/A8,Resolved
+DQ-SEX-ABBR,Consistency,Sex,Abbreviation,M / F instead of male / female,"value.strip().lower() in (m, f)",8,8,"Map M->male, F->female",A5/A8,Resolved
+DQ-SEX-UNX,Validity,Sex,Unexpected category,'Unknown',not male/female/m/f after strip+lower and not empty,3,3,Treat as missing (NaN),A5/A8,Resolved (imputed in pipeline)
+DQ-EMB-CASE,Consistency,Embarked,Lower-case port code,"s, c, q","value in (s,c,q)",10,10,strip + upper,A5/A8,Resolved
+DQ-EMB-WS,Consistency,Embarked,Leading/trailing spaces,'S ' etc.,value != value.strip(),7,6,strip,A5/A8,Resolved
+DQ-EMB-FULL,Consistency,Embarked,Full port name,Southampton / Cherbourg / Queenstown,value in full names,12,12,Map to S / C / Q,A5/A8,Resolved
+DQ-EMB-UNX,Validity,Embarked,Unexpected category,'X',not S/C/Q (any form) and not empty,3,3,Treat as missing (NaN),A5/A8,Resolved (imputed in pipeline)
+DQ-PCL-TXT,Consistency,Pclass,Ordinal text,1st / 2nd / 3rd instead of 1 / 2 / 3,value ends with st/nd/rd,12,12,Map to First/Second/Third,A5/A8,Resolved
+DQ-PCL-UNX,Validity,Pclass,Unexpected category,'Crew',not 1/2/3 (any form) and not empty,2,2,Treat as missing (NaN),A5/A8,Resolved (imputed in pipeline)
+DQ-SURV-TXT,Consistency,Survived,Text label,Yes / No instead of 1 / 0,"value in (Yes, No)",6,6,"Map Yes->1, No->0",A5/A8,Resolved
+DQ-AGE-TXT,Validity,Age,Number stored as text,'22 yrs',contains letters,6,6,"Strip non [0-9.-], to_numeric",A6/A8,Resolved
+DQ-FARE-TXT,Validity,Fare,Number stored as text,'£7.25',contains currency symbol,10,10,"Strip non [0-9.-], to_numeric",A6/A8,Resolved
+DQ-AGE-INV,Validity,Age,Impossible value,Age below 0 or above 100,Age < 0 or Age > 100,4,4,"Flag, set to NaN, impute in pipeline",A6/A8,Resolved (flag + pipeline imputation)
+DQ-AGE-SUS,Accuracy,Age,Suspicious value,Valid by rule but unusual (90-100),90 <= Age <= 100,2,2,Flag only; keep value,A6,Unresolved exception (flagged)
+DQ-AGE-INFANT,Accuracy,Age,Genuine unusual value (NOT an error),"Age below 1 (infants, e.g. 0.42)",0 < Age < 1,4,4,Keep: genuine infants,A6,Kept (genuine)
+DQ-FARE-INV,Validity,Fare,Impossible value,Negative fare or above 1000 (historical maximum about 512),Fare < 0 or Fare > 1000,6,6,"Flag, set to NaN, impute in pipeline",A6/A8,Resolved (flag + pipeline imputation)
+DQ-FARE-ZERO,Accuracy,Fare,Genuine unusual value (NOT necessarily an error),Fare exactly 0 (crew/guarantee passengers existed),Fare == 0,9,9,Keep and note,A6,Kept (judgment)
+DQ-FARE-IQR,Accuracy,Fare,Statistical outlier (genuine first-class fares),Valid fares above the IQR upper fence,Fare > Q3 + 1.5*IQR (on valid fares),79,77,"Keep: statistics flag them, the business rule does not",A6,Kept (judgment)
+DQ-SIB-INV,Validity,SibSp,Impossible value,Negative or above 10,SibSp < 0 or SibSp > 10,4,4,"Flag, set to NaN, impute in pipeline",A6/A8,Resolved (flag + pipeline imputation)
+DQ-PAR-INV,Validity,Parch,Impossible value,Negative or above 10,Parch < 0 or Parch > 10,2,2,"Flag, set to NaN, impute in pipeline",A6/A8,Resolved (flag + pipeline imputation)
+DQ-FEAT-PassengerId,Relevance,PassengerId,Not an automatic feature,"row identifier, no predictive meaning",Judgment based on meaning and uniqueness/missingness,600,600,Exclude from the feature matrix X (documented decision),A9,Excluded
+DQ-FEAT-Name,Relevance,Name,Not an automatic feature,free text identifier,Judgment based on meaning and uniqueness/missingness,600,600,Exclude from the feature matrix X (documented decision),A9,Excluded
+DQ-FEAT-Ticket,Relevance,Ticket,Not an automatic feature,"identifier-like text, many unique values",Judgment based on meaning and uniqueness/missingness,490,490,Exclude from the feature matrix X (documented decision),A9,Excluded
+DQ-FEAT-Cabin,Relevance,Cabin,Not an automatic feature,mostly missing,Judgment based on meaning and uniqueness/missingness,107,107,Exclude from the feature matrix X (documented decision),A9,Excluded

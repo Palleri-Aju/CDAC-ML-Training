@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KNN playground</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E6ECF1; --paper:#F8FAFC; --grid:#D3DDE6; --ink:#16212C; --muted:#56687A;
+  --line:#C2CEDA; --a:#3344A6; --b:#C98300; --field:#FFFFFF; --focus:#3344A6;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F151B; --paper:#161F28; --grid:#243241; --ink:#E5ECF2; --muted:#93A5B6;
+    --line:#2D3D4D; --a:#8392F5; --b:#F0B23A; --field:#1C2733; --focus:#A4B0FF;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F151B; --paper:#161F28; --grid:#243241; --ink:#E5ECF2; --muted:#93A5B6;
+  --line:#2D3D4D; --a:#8392F5; --b:#F0B23A; --field:#1C2733; --focus:#A4B0FF;
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"Atkinson Hyperlegible","Segoe UI",system-ui,-apple-system,sans-serif;
+  font-size:16px; line-height:1.5;
+}
+.wrap{max-width:1220px;margin:0 auto;padding:24px 20px 40px;display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:28px;align-items:start}
+header{grid-column:1/-1}
+h1{font-size:clamp(1.7rem,3.2vw,2.4rem);line-height:1.1;margin:0 0 6px;font-weight:700;letter-spacing:-0.01em}
+header p{margin:0;color:var(--muted);max-width:68ch}
+.stage{min-width:0}
+.board{position:relative;width:100%;max-width:calc(100vh - 170px);min-width:280px;aspect-ratio:1/1;margin:0;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--paper)}
+canvas#board{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}
+canvas#board:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.verdict{margin:14px 0 6px;font-size:1.1rem;max-width:62ch;min-height:3em}
+.verdict strong{font-weight:700}
+.sw{display:inline-block;width:.7em;height:.7em;border-radius:50%;margin:0 .25em 0 .1em;vertical-align:baseline}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;color:var(--muted);font-size:.92rem;margin:0}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+aside{display:flex;flex-direction:column;gap:20px}
+.group{border-top:1px solid var(--line);padding-top:14px}
+.group:first-child{border-top:0;padding-top:0}
+.group h2{font-size:1rem;margin:0 0 8px;font-weight:700}
+.kline{display:flex;align-items:baseline;gap:12px}
+.kline output{font-size:3.4rem;font-weight:700;line-height:1;min-width:1.6ch;font-variant-numeric:tabular-nums}
+.kline label{color:var(--muted)}
+input[type=range]{width:100%;accent-color:var(--ink);margin:8px 0 0}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg label{position:relative;text-align:center;padding:8px 4px;font-size:.9rem;cursor:pointer;border-left:1px solid var(--line);background:var(--field)}
+.seg label:first-child{border-left:0}
+.seg input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.seg label:has(input:checked){background:var(--ink);color:var(--paper)}
+.seg label:has(input:focus-visible){outline:3px solid var(--focus);outline-offset:-3px}
+.seg.two{grid-template-columns:1fr 1fr}
+select,button{font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:6px;padding:7px 10px}
+select{width:100%}
+button{cursor:pointer}
+button:hover{border-color:var(--ink)}
+button:disabled{opacity:.45;cursor:default;border-color:var(--line)}
+select:focus-visible,button:focus-visible,input[type=range]:focus-visible,input[type=checkbox]:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.check{display:flex;gap:10px;align-items:flex-start;margin:6px 0;cursor:pointer}
+.check input{margin-top:.3em;accent-color:var(--ink);width:1.05em;height:1.05em;flex:none}
+.field-label{display:block;color:var(--muted);font-size:.92rem;margin:10px 0 2px}
+.scores{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;margin:0}
+.scores dt{color:var(--muted);font-size:.9rem}
+.scores dd{margin:0 0 4px;font-size:1.7rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.scores dt:nth-of-type(1){grid-column:1;grid-row:1}.scores dd:nth-of-type(1){grid-column:1;grid-row:2}
+.scores dt:nth-of-type(2){grid-column:2;grid-row:1}.scores dd:nth-of-type(2){grid-column:2;grid-row:2}
+.count{color:var(--muted);font-size:.88rem;margin:4px 0 0}
+canvas#chart{display:block;width:100%;height:150px;margin-top:10px}
+.chart-key{display:flex;gap:16px;color:var(--muted);font-size:.85rem;margin-top:4px}
+.chart-key i{display:inline-block;width:18px;height:0;border-top:2px solid var(--ink);vertical-align:middle;margin-right:6px}
+.chart-key i.dash{border-top:2px dashed var(--muted)}
+details{border-top:1px solid var(--line);padding-top:14px}
+summary{cursor:pointer;font-weight:700}
+details ul{margin:10px 0 0;padding-left:1.1em}
+details li{margin-bottom:8px}
+@media (max-width:880px){
+  .wrap{grid-template-columns:1fr}
+  .board{max-width:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>K nearest neighbors, live</h1>
+    <p>Click or drag on the board to place a question point. Its K closest training points vote on what it is. Shading shows what KNN would predict at every spot.</p>
+  </header>
+
+  <section class="stage">
+    <figure class="board">
+      <canvas id="board" tabindex="0" aria-label="Scatter plot of training points. Click to place the question point; arrow keys move it."></canvas>
+    </figure>
+    <p class="verdict" id="verdict" aria-live="polite"></p>
+    <p class="legend">
+      <span><svg width="14" height="14" aria-hidden="true"><circle cx="7" cy="7" r="5.5" fill="var(--a)"/></svg>Indigo</span>
+      <span><svg width="14" height="14" aria-hidden="true"><polygon points="7,1.5 13,12.5 1,12.5" fill="var(--b)"/></svg>Saffron</span>
+      <span><svg width="14" height="14" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="var(--muted)" stroke-width="2"/></svg>Hollow shapes are test points the model never sees</span>
+    </p>
+  </section>
+
+  <aside>
+    <div class="group">
+      <div class="kline">
+        <output id="kOut" for="k">5</output>
+        <label for="k">neighbors get a vote</label>
+      </div>
+      <input id="k" type="range" min="1" max="25" step="1" value="5">
+    </div>
+
+    <div class="group">
+      <h2>Clicking the board will</h2>
+      <div class="seg" role="radiogroup" aria-label="Click mode">
+        <label><input type="radio" name="mode" value="ask" checked>Ask</label>
+        <label><input type="radio" name="mode" value="a">Add Indigo</label>
+        <label><input type="radio" name="mode" value="b">Add Saffron</label>
+      </div>
+      <div class="row"><button id="clearUser" disabled>Remove added points</button></div>
+    </div>
+
+    <div class="group">
+      <h2>Data</h2>
+      <label class="field-label" for="kind">Shape</label>
+      <select id="kind">
+        <option value="blobs">Two clusters</option>
+        <option value="moons">Two moons</option>
+        <option value="xor">Checkerboard (XOR)</option>
+        <option value="rings">Ring inside a ring</option>
+      </select>
+      <label class="field-label" for="noise">Noise</label>
+      <input id="noise" type="range" min="0" max="1" step="0.05" value="0.35">
+      <div class="row"><button id="reseed">Draw a new sample</button></div>
+    </div>
+
+    <div class="group">
+      <h2>Distance and voting</h2>
+      <div class="seg two" role="radiogroup" aria-label="Distance metric">
+        <label><input type="radio" name="metric" value="e" checked>Euclidean</label>
+        <label><input type="radio" name="metric" value="m">Manhattan</label>
+      </div>
+      <label class="check"><input type="checkbox" id="weighted"><span>Closer neighbors get a bigger vote</span></label>
+      <label class="check"><input type="checkbox" id="unscaled"><span>Skip feature scaling (the x-axis counts 20× more)</span></label>
+      <label class="check"><input type="checkbox" id="shade" checked><span>Shade the predicted regions</span></label>
+    </div>
+
+    <div class="group">
+      <h2>How good is this K?</h2>
+      <dl class="scores">
+        <dt>Training accuracy</dt><dd id="trAcc">–</dd>
+        <dt>Test accuracy</dt><dd id="teAcc">–</dd>
+      </dl>
+      <p class="count" id="count"></p>
+      <canvas id="chart" aria-label="Line chart of training and test accuracy for K from 1 to 25"></canvas>
+      <div class="chart-key"><span><i></i>Test</span><span><i class="dash"></i>Training</span><span>Vertical line is the current K</span></div>
+    </div>
+
+    <details open>
+      <summary>Things to try</summary>
+      <ul>
+        <li>Set K to 1. Why is training accuracy a perfect 100% while test accuracy drops?</li>
+        <li>Raise the noise, then find the K where the test line on the chart peaks.</li>
+        <li>Tick “Skip feature scaling” and watch the regions turn into vertical stripes.</li>
+        <li>On the checkerboard, slide K up to 25. What happens near the centre?</li>
+        <li>Drag the question point slowly across a border and watch the vote flip.</li>
+      </ul>
+    </details>
+  </aside>
+</div>
+
+<script>
+(function(){
+  const $ = s => document.querySelector(s);
+  const board = $('#board'), ctx = board.getContext('2d');
+  const chart = $('#chart'), cctx = chart.getContext('2d');
+  const NAMES = ['Indigo','Saffron'];
+  const KMAX = 25;
+
+  const state = {
+    kind:'blobs', noise:0.35, seed:7, k:5, metric:'e',
+    weighted:false, unscaled:false, shade:true, mode:'ask',
+    points:[], query:{x:0.5,y:0.5}, curves:null
+  };
+  let C = {};
+
+  function readColors(){
+    const cs = getComputedStyle(document.documentElement);
+    ['paper','grid','ink','muted','line','a','b'].forEach(n => C[n] = cs.getPropertyValue('--'+n).trim());
+  }
+
+  // ---------- data ----------
+  function rng(s){ return function(){ s|=0; s=s+0x6D2B79F5|0; let t=Math.imul(s^s>>>15,1|s); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+  function gauss(r){ let u=0; while(!u) u=r(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r()); }
+  const clamp = v => Math.min(0.98, Math.max(0.02, v));
+
+  function makeData(){
+    const r = rng(state.seed*7919 + state.kind.length*31);
+    const n = 140, sd = 0.03 + state.noise*0.13, pts = [];
+    for(let i=0;i<n;i++){
+      let c = i%2, x, y;
+      if(state.kind==='blobs'){
+        const cx = c?0.64:0.36, cy = c?0.62:0.38;
+        x = cx + gauss(r)*(sd*1.3+0.03); y = cy + gauss(r)*(sd*1.3+0.03);
+      } else if(state.kind==='moons'){
+        const t = r()*Math.PI;
+        let mx, my;
+        if(c===0){ mx = Math.cos(t); my = Math.sin(t); } else { mx = 1-Math.cos(t); my = 0.5-Math.sin(t); }
+        x = (mx+1.25)/3.5 + gauss(r)*sd; y = 1-((my+0.95)/2.4) + gauss(r)*sd;
+      } else if(state.kind==='xor'){
+        x = 0.06 + r()*0.88; y = 0.06 + r()*0.88;
+        c = ((x>0.5)!==(y>0.5)) ? 1 : 0;
+        x += gauss(r)*sd*0.6; y += gauss(r)*sd*0.6;
+      } else {
+        const a = r()*2*Math.PI, rad = (c?0.34:0.14) + gauss(r)*sd*0.8;
+        x = 0.5 + rad*Math.cos(a); y = 0.5 + rad*Math.sin(a);
+      }
+      pts.push({x:clamp(x), y:clamp(y), c, test: r()<0.3, user:false});
+    }
+    return pts;
+  }
+
+  // ---------- knn ----------
+  function sortedDist(q, pool){
+    const xs = state.unscaled ? 20 : 1, euc = state.metric==='e';
+    const arr = pool.map(p => { const dx=(p.x-q.x)*xs, dy=p.y-q.y; return {p, d: euc ? Math.hypot(dx,dy) : Math.abs(dx)+Math.abs(dy)}; });
+    arr.sort((a,b)=>a.d-b.d);
+    return arr;
+  }
+  function vote(sorted, k){
+    k = Math.min(k, sorted.length);
+    const v=[0,0], n=[0,0];
+    for(let i=0;i<k;i++){ const s=sorted[i]; const w = state.weighted ? 1/(s.d+0.01) : 1; v[s.p.c]+=w; n[s.p.c]++; }
+    const pred = v[1]>v[0] ? 1 : v[0]>v[1] ? 0 : sorted[0].p.c;
+    const tot = v[0]+v[1];
+    return {nb:sorted.slice(0,k), v, n, k, pred, frac: tot ? Math.max(v[0],v[1])/tot : 1, tie: v[0]===v[1]};
+  }
+  const train = () => state.points.filter(p=>!p.test);
+  const test = () => state.points.filter(p=>p.test);
+
+  function computeCurves(){
+    const tr = train(), te = test();
+    if(!tr.length){ state.curves=null; return; }
+    const trS = tr.map(q=>({q, s:sortedDist(q,tr)}));
+    const teS = te.map(q=>({q, s:sortedDist(q,tr)}));
+    const acc = (set,k) => set.length ? set.filter(o=>vote(o.s,k).pred===o.q.c).length/set.length : null;
+    const trA=[], teA=[];
+    for(let k=1;k<=KMAX;k++){ trA.push(acc(trS,k)); teA.push(acc(teS,k)); }
+    state.curves = {tr:trA, te:teA};
+  }
+
+  // ---------- drawing ----------
+  let W = 0, dpr = 1;
+  function sizeBoard(){
+    dpr = window.devicePixelRatio || 1;
+    W = board.clientWidth;
+    board.width = Math.round(W*dpr); board.height = Math.round(W*dpr);
+  }
+
+  function shape(p, filled, r){
+    const X=p.x*W, Y=p.y*W, col = p.c ? C.b : C.a;
+    ctx.beginPath();
+    if(p.c===0) ctx.arc(X,Y,r,0,Math.PI*2);
+    else { const h=r*1.15; ctx.moveTo(X,Y-h); ctx.lineTo(X+h,Y+h*0.8); ctx.lineTo(X-h,Y+h*0.8); ctx.closePath(); }
+    if(filled){ ctx.fillStyle=col; ctx.fill(); ctx.lineWidth=1.5; ctx.strokeStyle=C.paper; ctx.stroke(); }
+    else { ctx.lineWidth=2; ctx.strokeStyle=col; ctx.stroke(); }
+  }
+
+  function drawBoard(){
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.fillStyle = C.paper; ctx.fillRect(0,0,W,W);
+    const tr = train();
+
+    if(state.shade && tr.length){
+      const R = 60, cs = W/R;
+      for(let i=0;i<R;i++) for(let j=0;j<R;j++){
+        const res = vote(sortedDist({x:(i+0.5)/R, y:(j+0.5)/R}, tr), state.k);
+        ctx.globalAlpha = 0.07 + 0.30*(res.frac-0.5)*2;
+        ctx.fillStyle = res.pred ? C.b : C.a;
+        ctx.fillRect(i*cs, j*cs, cs+0.7, cs+0.7);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
+    for(let t=1;t<10;t++){
+      const v = Math.round(t/10*W)+0.5;
+      ctx.beginPath(); ctx.moveTo(v,0); ctx.lineTo(v,W); ctx.moveTo(0,v); ctx.lineTo(W,v); ctx.stroke();
+    }
+
+    let res = null;
+    const q = state.query;
+    if(tr.length){
+      res = vote(sortedDist(q, tr), state.k);
+      const Rk = res.nb[res.nb.length-1].d, xs = state.unscaled ? 20 : 1;
+      ctx.setLineDash([6,5]); ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      if(state.metric==='e') ctx.ellipse(q.x*W, q.y*W, Math.max(1,Rk/xs*W), Math.max(1,Rk*W), 0, 0, Math.PI*2);
+      else { const rx=Rk/xs*W, ry=Rk*W; ctx.moveTo(q.x*W, q.y*W-ry); ctx.lineTo(q.x*W+rx, q.y*W); ctx.lineTo(q.x*W, q.y*W+ry); ctx.lineTo(q.x*W-rx, q.y*W); ctx.closePath(); }
+      ctx.stroke(); ctx.setLineDash([]);
+      ctx.globalAlpha = 0.55; ctx.lineWidth = 1.25;
+      res.nb.forEach(o => { ctx.beginPath(); ctx.moveTo(q.x*W,q.y*W); ctx.lineTo(o.p.x*W,o.p.y*W); ctx.stroke(); });
+      ctx.globalAlpha = 1;
+    }
+
+    const pr = Math.max(4, Math.min(6.5, W/110));
+    state.points.forEach(p => shape(p, !p.test, pr));
+
+    if(res){
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
+      res.nb.forEach(o => { ctx.beginPath(); ctx.arc(o.p.x*W, o.p.y*W, pr+4, 0, Math.PI*2); ctx.stroke(); });
+    }
+
+    // question point
+    const X=q.x*W, Y=q.y*W, s=pr+5;
+    ctx.fillStyle = C.paper; ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(X,Y,s,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = res ? (res.pred ? C.b : C.a) : C.muted;
+    ctx.beginPath(); ctx.arc(X,Y,s-4,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = C.ink; ctx.font = `700 ${Math.round(s*1.05)}px "Atkinson Hyperlegible", system-ui, sans-serif`;
+    ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText('?', X+s+5, Y);
+
+    writeVerdict(res);
+  }
+
+  function sw(c){ return `<span class="sw" style="background:var(--${c?'b':'a'})"></span>`; }
+  function writeVerdict(res){
+    const el = $('#verdict');
+    if(!res){ el.innerHTML = 'Add a few training points to get a prediction.'; return; }
+    const name = `${sw(res.pred)}<strong>${NAMES[res.pred]}</strong>`;
+    let t;
+    if(res.k===1){
+      t = `Its single nearest neighbor is ${NAMES[res.nb[0].p.c]}, so KNN predicts ${name}.`;
+    } else if(state.weighted){
+      t = `Its ${res.k} nearest neighbors are ${res.n[0]} Indigo and ${res.n[1]} Saffron. Weighted by closeness, the votes come to ${res.v[0].toFixed(1)} against ${res.v[1].toFixed(1)}, so KNN predicts ${name}.`;
+    } else {
+      t = `Of its ${res.k} nearest neighbors, ${res.n[0]} are Indigo and ${res.n[1]} are Saffron, so KNN predicts ${name}.`;
+      if(res.tie) t += ' It’s a tie, so the single closest neighbor breaks it.';
+    }
+    if(res.k < state.k) t += ` (Only ${res.k} training points exist, so K is capped.)`;
+    el.innerHTML = t;
+  }
+
+  function pct(v){ return v==null ? '–' : Math.round(v*100)+'%'; }
+  function writeScores(){
+    const c = state.curves, i = state.k-1;
+    $('#trAcc').textContent = c ? pct(c.tr[i]) : '–';
+    $('#teAcc').textContent = c ? pct(c.te[i]) : '–';
+    const nu = state.points.filter(p=>p.user).length;
+    $('#count').textContent = `${train().length} training points${nu?` (${nu} added by you)`:''}, ${test().length} test points.`;
+    $('#clearUser').disabled = !nu;
+  }
+
+  function drawChart(){
+    const w = chart.clientWidth, h = 150;
+    chart.width = Math.round(w*dpr); chart.height = Math.round(h*dpr);
+    cctx.setTransform(dpr,0,0,dpr,0,0);
+    cctx.clearRect(0,0,w,h);
+    const c = state.curves; if(!c) return;
+    const all = c.tr.concat(c.te).filter(v=>v!=null);
+    const ymin = Math.max(0, Math.min(0.9, Math.floor(Math.min(...all)*10)/10));
+    const L=36, R=8, T=8, B=22;
+    const x = k => L + (k-1)/(KMAX-1)*(w-L-R);
+    const y = a => T + (1-(a-ymin)/(1-ymin))*(h-T-B);
+    cctx.font = '12px "Atkinson Hyperlegible", system-ui, sans-serif';
+    cctx.fillStyle = C.muted; cctx.strokeStyle = C.line; cctx.lineWidth = 1;
+    cctx.textAlign='right'; cctx.textBaseline='middle';
+    for(let a=ymin; a<=1.0001; a+=0.1){
+      const yy = Math.round(y(a))+0.5;
+      cctx.beginPath(); cctx.moveTo(L,yy); cctx.lineTo(w-R,yy); cctx.stroke();
+      cctx.fillText(Math.round(a*100)+'%', L-6, yy);
+    }
+    cctx.textAlign='center'; cctx.textBaseline='top';
+    [1,5,10,15,20,25].forEach(k => cctx.fillText('K='+k, x(k), h-B+6));
+    // current K
+    cctx.strokeStyle = C.ink; cctx.lineWidth = 1.5;
+    cctx.beginPath(); cctx.moveTo(x(state.k),T); cctx.lineTo(x(state.k),h-B); cctx.stroke();
+    const line = (arr, col, dash, width) => {
+      cctx.setLineDash(dash); cctx.strokeStyle = col; cctx.lineWidth = width; cctx.beginPath();
+      let started=false;
+      arr.forEach((v,i)=>{ if(v==null) return; const px=x(i+1), py=y(v); started ? cctx.lineTo(px,py) : cctx.moveTo(px,py); started=true; });
+      cctx.stroke(); cctx.setLineDash([]);
+    };
+    line(c.tr, C.muted, [5,4], 2);
+    line(c.te, C.ink, [], 2.5);
+    const tv = c.te[state.k-1];
+    if(tv!=null){ cctx.fillStyle=C.ink; cctx.beginPath(); cctx.arc(x(state.k), y(tv), 4, 0, Math.PI*2); cctx.fill(); }
+  }
+
+  function full(){ computeCurves(); writeScores(); drawChart(); drawBoard(); }
+  function regenerate(){ state.points = makeData(); full(); }
+
+  // ---------- events ----------
+  $('#k').addEventListener('input', e => { state.k = +e.target.value; $('#kOut').textContent = state.k; writeScores(); drawChart(); drawBoard(); });
+  document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', e => state.mode = e.target.value));
+  document.querySelectorAll('input[name=metric]').forEach(r => r.addEventListener('change', e => { state.metric = e.target.value; full(); }));
+  $('#kind').addEventListener('change', e => { state.kind = e.target.value; regenerate(); });
+  $('#noise').addEventListener('input', e => { state.noise = +e.target.value; regenerate(); });
+  $('#reseed').addEventListener('click', () => { state.seed++; regenerate(); });
+  $('#weighted').addEventListener('change', e => { state.weighted = e.target.checked; full(); });
+  $('#unscaled').addEventListener('change', e => { state.unscaled = e.target.checked; full(); });
+  $('#shade').addEventListener('change', e => { state.shade = e.target.checked; drawBoard(); });
+  $('#clearUser').addEventListener('click', () => { state.points = state.points.filter(p=>!p.user); full(); });
+
+  function pos(e){ const r = board.getBoundingClientRect(); return {x:clamp((e.clientX-r.left)/r.width), y:clamp((e.clientY-r.top)/r.height)}; }
+  let dragging = false;
+  board.addEventListener('pointerdown', e => {
+    const p = pos(e);
+    if(state.mode==='ask'){ dragging = true; board.setPointerCapture(e.pointerId); state.query = p; drawBoard(); }
+    else { state.points.push({x:p.x, y:p.y, c: state.mode==='a'?0:1, test:false, user:true}); full(); }
+  });
+  board.addEventListener('pointermove', e => { if(dragging){ state.query = pos(e); drawBoard(); } });
+  ['pointerup','pointercancel'].forEach(t => board.addEventListener(t, () => dragging = false));
+  board.addEventListener('keydown', e => {
+    const step = e.shiftKey ? 0.06 : 0.02, q = state.query;
+    const moves = {ArrowLeft:[-step,0], ArrowRight:[step,0], ArrowUp:[0,-step], ArrowDown:[0,step]};
+    if(moves[e.key]){ e.preventDefault(); q.x = clamp(q.x+moves[e.key][0]); q.y = clamp(q.y+moves[e.key][1]); drawBoard(); }
+  });
+
+  new ResizeObserver(() => { sizeBoard(); drawChart(); drawBoard(); }).observe(board);
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readColors(); drawChart(); drawBoard(); });
+  new MutationObserver(() => { readColors(); drawChart(); drawBoard(); }).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
+
+  readColors(); sizeBoard();
+  state.points = makeData();
+  full();
+  if(document.fonts) document.fonts.ready.then(() => { drawChart(); drawBoard(); });
+})();
+</script>
+</body>
+</html>
